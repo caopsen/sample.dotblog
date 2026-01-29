@@ -309,6 +309,8 @@ void detect_conflicts(connection_scheduler_t* scheduler) {
 
 ### LL数据包格式
 
+**注意**: 以下示例说明数据包结构，控制PDU处理函数需要实现。
+
 ```c
 typedef struct __attribute__((packed)) {
     // 前导码 (由硬件处理)
@@ -335,15 +337,15 @@ void parse_ll_data_packet(uint8_t* packet,
     // 检查LLID
     switch(pdu->llid) {
         case 0x01:  // LL数据PDU, 继续或结束
-            process_data_pdu(pdu->payload, pdu->length);
+            // process_data_pdu(pdu->payload, pdu->length);
             break;
             
         case 0x02:  // LL数据PDU, 开始
-            process_data_start(pdu->payload, pdu->length);
+            // process_data_start(pdu->payload, pdu->length);
             break;
             
         case 0x03:  // LL控制PDU
-            process_control_pdu(pdu->payload, pdu->length);
+            // process_control_pdu(pdu->payload, pdu->length);
             break;
             
         default:
@@ -359,6 +361,8 @@ void parse_ll_data_packet(uint8_t* packet,
 
 ### L2CAP数据包解析
 
+**注意**: 以下函数调用为占位符，需要根据实际需求实现。
+
 ```c
 typedef struct __attribute__((packed)) {
     uint16_t length;         // 有效载荷长度
@@ -372,26 +376,26 @@ void parse_l2cap_packet(uint8_t* data, uint16_t length) {
     printf("L2CAP Channel ID: 0x%04X, Length: %d\n", 
            l2cap->channel_id, l2cap->length);
     
-    // 根据信道ID处理
+    // 根据信道ID处理 (需要实现各处理函数)
     switch(l2cap->channel_id) {
         case 0x0004:  // ATT
-            parse_att_packet(l2cap->payload, l2cap->length);
+            // parse_att_packet(l2cap->payload, l2cap->length);
             break;
             
         case 0x0005:  // L2CAP信令
-            parse_l2cap_signaling(l2cap->payload, l2cap->length);
+            // parse_l2cap_signaling(l2cap->payload, l2cap->length);
             break;
             
         case 0x0006:  // SMP
-            parse_smp_packet(l2cap->payload, l2cap->length);
+            // parse_smp_packet(l2cap->payload, l2cap->length);
             break;
             
         default:
             if(l2cap->channel_id >= 0x0040) {
                 // 动态信道
-                parse_dynamic_channel(l2cap->channel_id, 
-                                    l2cap->payload, 
-                                    l2cap->length);
+                // parse_dynamic_channel(l2cap->channel_id, 
+                //                     l2cap->payload, 
+                //                     l2cap->length);
             }
             break;
     }

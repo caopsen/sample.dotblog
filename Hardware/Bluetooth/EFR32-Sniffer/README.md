@@ -132,6 +132,7 @@ typedef struct {
     // 统计信息
     uint32_t packets_captured;
     uint32_t crc_errors;
+    uint32_t missed_events;  // 添加此字段
 } connection_context_t;
 
 // 维护多个连接上下文
@@ -249,8 +250,11 @@ void on_packet_received(uint8_t* packet, uint16_t length) {
 
 蓝牙LE使用自适应跳频来避免干扰：
 
+**注意**: 以下为简化示例用于说明概念。实际实现需要正确处理channel_map的位图格式。
+
 ```c
-// 计算下一个数据信道
+// 计算下一个数据信道 (简化示例)
+// 注意: channel_map实际是5字节位图，这里简化为布尔数组以说明概念
 uint8_t calculate_next_channel(uint8_t current_channel,
                                 uint8_t hop_increment,
                                 uint16_t channel_map[37]) {

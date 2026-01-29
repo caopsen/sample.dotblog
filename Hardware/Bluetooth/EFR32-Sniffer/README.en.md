@@ -132,6 +132,7 @@ typedef struct {
     // Statistics
     uint32_t packets_captured;
     uint32_t crc_errors;
+    uint32_t missed_events;  // Add this field
 } connection_context_t;
 
 // Maintain multiple connection contexts
@@ -249,8 +250,11 @@ void on_packet_received(uint8_t* packet, uint16_t length) {
 
 Bluetooth LE uses adaptive frequency hopping to avoid interference:
 
+**Note**: The following is a simplified example for concept illustration. Actual implementation needs to properly handle channel_map bitmap format.
+
 ```c
-// Calculate next data channel
+// Calculate next data channel (simplified example)
+// Note: channel_map is actually a 5-byte bitmap, simplified here as boolean array for concept
 uint8_t calculate_next_channel(uint8_t current_channel,
                                 uint8_t hop_increment,
                                 uint16_t channel_map[37]) {

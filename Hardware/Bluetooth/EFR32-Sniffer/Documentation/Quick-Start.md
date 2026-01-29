@@ -61,6 +61,11 @@
 #include "rail.h"
 #include "rail_ble.h"
 
+// 前向声明
+void start_advertising_scan(void);
+void handle_rx_packet(RAIL_Handle_t handle);
+void handle_connect_req(uint8_t* packet, uint16_t length);
+
 // 连接上下文结构 (需要完整定义)
 typedef struct {
     uint32_t access_address;
@@ -295,6 +300,11 @@ int main(void) {
 
 **解决方案**:
 ```c
+// 需要实现 delay_ms 辅助函数
+void delay_ms(uint32_t ms) {
+    // 使用定时器或系统延时实现
+}
+
 // 增加扫描时间
 void scan_all_advertising_channels(void) {
     for(int round = 0; round < 10; round++) {
@@ -314,11 +324,13 @@ void scan_all_advertising_channels(void) {
 
 **解决方案**:
 ```c
+// 需要实现 get_timestamp 函数返回微秒级时间戳
+
 // 添加时间容差
 #define TIME_TOLERANCE_US 150
 
 bool is_event_time(connection_context_t* ctx) {
-    uint64_t current_time = get_timestamp();
+    uint64_t current_time = get_timestamp();  // 需要实现
     int64_t diff = ctx->next_event_timestamp - current_time;
     
     // 提前一点切换到接收状态
@@ -334,17 +346,17 @@ bool is_event_time(connection_context_t* ctx) {
 
 **解决方案**:
 ```c
+// 需要实现以下辅助函数
+
 // 实现智能调度
 void schedule_connections(void) {
-    // 按下一个事件时间排序
-    sort_connections_by_next_event();
+    // sort_connections_by_next_event(); // 需要实现
     
     // 检测冲突
     for(int i = 0; i < connection_count - 1; i++) {
-        if(events_overlap(i, i+1)) {
-            // 选择优先级高的
-            skip_lower_priority_event(i, i+1);
-        }
+        // if(events_overlap(i, i+1)) {  // 需要实现
+        //     skip_lower_priority_event(i, i+1); // 需要实现
+        // }
     }
 }
 ```
@@ -355,6 +367,13 @@ void schedule_connections(void) {
 
 1. **启用日志输出**
    ```c
+   // 需要配置 pti_config 结构
+   RAIL_PtiConfig_t pti_config = {
+       .mode = RAIL_PTI_MODE_UART,  // 或其他模式
+       .baud = 1600000,              // 波特率
+       // ... 其他配置
+   };
+   
    // 将数据包发送到 PTI (Packet Trace Interface)
    RAIL_ConfigPti(rail_handle, &pti_config);
    ```
@@ -395,6 +414,11 @@ void export_packet_csv(captured_packet_t* pkt) {
 
 ### 2. 使用 DMA
 ```c
+// 需要配置 dma_config 结构
+LDMA_TransferCfg_t dma_config = LDMA_TRANSFER_CFG_PERIPHERAL(
+    ldmaPeripheralSignal_USART0_RXDATAV
+);
+
 // 启用 DMA 减少 CPU 负载
 RAIL_ConfigDma(rail_handle, &dma_config);
 ```
