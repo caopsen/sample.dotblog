@@ -199,13 +199,19 @@ uint8_t get_data_channel(uint16_t event_counter,
     // 蓝牙LE信道选择算法#1
     uint8_t unmapped = (event_counter * hop_increment) % 37;
     
-    if(map_info->channel_map_bitmap & (1 << unmapped)) {
-        return unmapped;  // 信道可用
+    // 检查未映射信道是否在信道映射中
+    if(unmapped < 37 && (map_info->channel_map_bitmap & (1 << unmapped))) {
+        return unmapped;  // 信道可用，直接返回
     }
     
-    // 重新映射
-    uint8_t remapping_index = unmapped % map_info->num_used_channels;
-    return map_info->used_channels[remapping_index];
+    // 信道不可用，需要重新映射
+    // 根据蓝牙规范，使用已用信道数进行模运算
+    if(map_info->num_used_channels > 0) {
+        uint8_t remapping_index = unmapped % map_info->num_used_channels;
+        return map_info->used_channels[remapping_index];
+    }
+    
+    return 0;  // 默认返回信道0（不应该发生）
 }
 ```
 
@@ -263,9 +269,10 @@ void schedule_next_connection(connection_scheduler_t* scheduler) {
 
 ```c
 typedef struct {
+    connection_context_t* connection;
     uint64_t start_time;
     uint64_t end_time;
-    connection_context_t* connection;
+    uint32_t connection_event_length;  // 连接事件持续时间(us)
 } time_window_t;
 
 bool windows_overlap(time_window_t* w1, time_window_t* w2) {
@@ -280,9 +287,11 @@ void detect_conflicts(connection_scheduler_t* scheduler) {
     for(uint8_t i = 0; i < scheduler->count; i++) {
         connection_context_t* ctx = scheduler->items[i].connection;
         windows[i].start_time = ctx->next_event_timestamp;
+        windows[i].connection_event_length = 2500;  // 典型值2.5ms
         windows[i].end_time = ctx->next_event_timestamp + 
-                             ctx->connection_event_length;
+                             windows[i].connection_event_length;
         windows[i].connection = ctx;
+    }
     }
     
     // 检测冲突
@@ -527,11 +536,20 @@ void print_performance_report(performance_metrics_t* metrics) {
     printf("\n=== Performance Report ===\n");
     printf("Runtime: %llu ms\n", runtime / 1000);
     printf("Total Packets: %u\n", metrics->total_packets);
-    printf("Packet Rate: %.2f pkt/s\n", 
-           (float)metrics->total_packets / (runtime / 1000000.0));
-    printf("CRC Errors: %u (%.2f%%)\n", 
-           metrics->crc_errors,
-           100.0 * metrics->crc_errors / metrics->total_packets);
+    
+    if(runtime > 0) {
+        printf("Packet Rate: %.2f pkt/s\n", 
+               (float)metrics->total_packets / (runtime / 1000000.0));
+    }
+    
+    if(metrics->total_packets > 0) {
+        printf("CRC Errors: %u (%.2f%%)\n", 
+               metrics->crc_errors,
+               100.0 * metrics->crc_errors / metrics->total_packets);
+    } else {
+        printf("CRC Errors: %u\n", metrics->crc_errors);
+    }
+    
     printf("Missed Events: %u\n", metrics->missed_events);
     printf("Buffer Overflows: %u\n", metrics->buffer_overflows);
 }

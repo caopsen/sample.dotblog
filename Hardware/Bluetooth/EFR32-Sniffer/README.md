@@ -296,7 +296,7 @@ uint8_t calculate_next_channel(uint8_t current_channel,
 typedef struct {
     uint32_t total_packets;
     uint32_t crc_errors;
-    uint32_t missed_events;
+    uint32_t missed_events;  // 需要在调度逻辑中更新此计数
     uint32_t sync_losses;
 } sniffer_statistics_t;
 
@@ -305,6 +305,11 @@ void print_statistics(connection_context_t* ctx) {
     printf("  捕获数据包: %u\n", ctx->packets_captured);
     printf("  CRC错误: %u\n", ctx->crc_errors);
     printf("  丢失事件: %u\n", ctx->missed_events);
+}
+
+// 在检测到丢失事件时调用
+void on_event_missed(connection_context_t* ctx) {
+    ctx->missed_events++;
 }
 ```
 

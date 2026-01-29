@@ -52,6 +52,8 @@
 
 创建 `app.c` 文件：
 
+**注意**: 以下代码为示例框架，需要补充完整的函数实现才能编译运行。
+
 ```c
 #include "em_device.h"
 #include "em_chip.h"
@@ -59,8 +61,21 @@
 #include "rail.h"
 #include "rail_ble.h"
 
+// 连接上下文结构 (需要完整定义)
+typedef struct {
+    uint32_t access_address;
+    uint8_t hop_increment;
+    uint16_t interval;
+    uint16_t channel_map[37];
+    uint8_t current_channel;
+    uint32_t event_counter;
+    uint64_t next_event_timestamp;
+    uint32_t packets_captured;
+} connection_context_t;
+
 // 全局变量
 static RAIL_Handle_t rail_handle;
+static RAIL_Config_t rail_config = RAIL_CONFIG_DEFAULT;
 static connection_context_t active_connections[4];
 static uint8_t connection_count = 0;
 
@@ -91,11 +106,11 @@ void app_init(void) {
 
 // 开始扫描广播信道
 void start_advertising_scan(void) {
-    // 监听广播信道 37, 38, 39
-    for(uint8_t ch = 37; ch <= 39; ch++) {
-        RAIL_StartRx(rail_handle, ch, NULL);
-        printf("监听广播信道 %d\n", ch);
-    }
+    // 注意: 实际实现需要使用定时器或扫描模式在信道间切换
+    // 这里仅为示例，展示基本概念
+    RAIL_Idle(rail_handle, RAIL_IDLE_ABORT, true);
+    RAIL_StartRx(rail_handle, 37, NULL);  // 开始监听信道37
+    printf("开始监听广播信道\n");
 }
 
 // RAIL 事件处理
@@ -129,16 +144,23 @@ void handle_rx_packet(RAIL_Handle_t handle) {
                                            packet_handle,
                                            packet_buffer);
     
-    // 检查是否是 CONNECT_REQ
-    if (is_connect_req(packet_buffer)) {
+    // 检查是否是 CONNECT_REQ (检查PDU类型)
+    if (packet_buffer[0] == 0x05) {  // CONNECT_REQ PDU type
         handle_connect_req(packet_buffer, length);
-    } else {
+    } else if (length >= 4) {
         // 检查是否属于已跟踪的连接
-        uint32_t access_addr = extract_access_address(packet_buffer);
-        connection_context_t* ctx = find_connection(access_addr);
+        uint32_t access_addr = (packet_buffer[3] << 24) | 
+                              (packet_buffer[2] << 16) |
+                              (packet_buffer[1] << 8) | 
+                              packet_buffer[0];
         
-        if (ctx != NULL) {
-            process_connection_packet(ctx, packet_buffer, length);
+        // 查找匹配的连接 (简化实现)
+        for(uint8_t i = 0; i < connection_count; i++) {
+            if(active_connections[i].access_address == access_addr) {
+                active_connections[i].packets_captured++;
+                printf("连接 [%08X]: 接收 %d 字节\n", access_addr, length);
+                break;
+            }
         }
     }
     
@@ -155,31 +177,42 @@ void handle_connect_req(uint8_t* packet, uint16_t length) {
     
     connection_context_t* ctx = &active_connections[connection_count];
     
-    // 解析连接参数
-    parse_connect_req_packet(packet, ctx);
-    
-    // 打印连接信息
-    printf("\n[新连接 #%d]\n", connection_count + 1);
-    printf("访问地址: 0x%08X\n", ctx->access_address);
-    printf("跳频增量: %d\n", ctx->hop_increment);
-    printf("连接间隔: %d (%.2f ms)\n", 
-           ctx->interval, ctx->interval * 1.25);
-    
-    connection_count++;
-    
-    // 开始跟踪此连接
-    start_tracking_connection(ctx);
+    // 简化的参数解析 (实际需要完整解析CONNECT_REQ格式)
+    // CONNECT_REQ格式: PDU头 + 发起者地址(6) + 广播者地址(6) + LLData(22)
+    if(length >= 34) {
+        // 提取访问地址 (从偏移12开始)
+        ctx->access_address = (packet[15] << 24) | (packet[14] << 16) |
+                             (packet[13] << 8) | packet[12];
+        
+        // 提取跳频增量和间隔 (简化)
+        ctx->hop_increment = packet[33] & 0x1F;
+        ctx->interval = (packet[21] << 8) | packet[20];
+        
+        // 打印连接信息
+        printf("\n[新连接 #%d]\n", connection_count + 1);
+        printf("访问地址: 0x%08X\n", ctx->access_address);
+        printf("跳频增量: %d\n", ctx->hop_increment);
+        printf("连接间隔: %d (%.2f ms)\n", 
+               ctx->interval, ctx->interval * 1.25);
+        
+        connection_count++;
+    }
 }
 
 // 主循环
 void app_process_action(void) {
-    // 处理连接调度
+    // 简化的连接调度示例
+    // 实际实现需要精确的时序管理和信道切换
+    
+    // 这里只是演示框架，完整实现需要:
+    // 1. 定时器管理连接事件
+    // 2. 信道跳频算法
+    // 3. 时间同步机制
+    // 4. 优先级调度
+    
+    // 周期性检查各连接状态
     for(uint8_t i = 0; i < connection_count; i++) {
-        connection_context_t* ctx = &active_connections[i];
-        
-        if (is_event_time(ctx)) {
-            switch_to_connection_channel(ctx);
-        }
+        // 连接状态维护代码
     }
 }
 
